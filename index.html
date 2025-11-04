@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kronika Holesov</title>
+  <style>
+    :root { font-family: system-ui, Inter, Arial; }
+    body { margin:0; background:#0b0c10; color:#eaeaea; }
+    .app { max-width:720px; margin:0 auto; min-height:100dvh; display:grid; grid-template-rows:1fr auto; gap:12px; padding:16px; }
+    .chat{ overflow-y:auto; padding-right:4px; }
+    .msg { padding:10px 12px; border-radius:14px; margin:6px 0; max-width:85%; line-height:1.35; word-wrap:break-word; white-space:pre-wrap; }
+    .me  { background:#1f2833; margin-left:auto; border-top-right-radius:4px; }
+    .bot { background:#14191f; margin-right:auto; border-top-left-radius:4px; }
+    .row { display:flex; gap:8px; }
+    input[type=text]{ flex:1; padding:12px; border-radius:12px; border:1px solid #2b2f36; background:#0f1318; color:#eaeaea; outline:none; }
+    button{ padding:12px 16px; border-radius:12px; border:0; background:#4fb3ff; color:#001018; font-weight:600; cursor:pointer; }
+    button:disabled{ opacity:.6; cursor:not-allowed; }
+    .hint{ opacity:.65; font-size:12px; text-align:center; margin-top:-4px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="chat" class="chat"></div>
+    <form id="form" class="row" autocomplete="off">
+      <input id="input" type="text" placeholder="Ahoj! 👋 Jsem asistent kroniky města Holešova. Zeptej se prosím na něco z kroniky (např. „Kdo je starosta města Holešov?“)." />
+      <button id="send" type="submit">Send</button>
+    </form>
+    <div class="hint">Running on AIBOX-R1.</div>
+  </div>
+<script>
+  // TODO
+  const API_BASE = "https://api.your-domain.tld"; 
+  const chatEl = document.getElementById("chat");
+  const formEl = document.getElementById("form");
+  const inputEl = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+  const sessionId = crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
+
+  function addMessage(text, who) {
+    const div = document.createElement("div");
+    div.className = `msg ${who}`;
+    div.textContent = text;
+    chatEl.appendChild(div);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    return div;
+  }
+
+  async function callAPI(message) {
+    const res = await fetch(`${API_BASE}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, sessionId })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data.reply ?? "";
+  }
+
+  formEl.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = inputEl.value.trim();
+    if (!text) return;
+    addMessage(text, "me");
+    inputEl.value = ""; inputEl.focus();
+    sendBtn.disabled = true;
+    const bubble = addMessage("…", "bot");
+    try {
+      const reply = await callAPI(text);
+      bubble.textContent = reply || "Neznám";
+    } catch (err) {
+      console.error(err);
+      bubble.textContent = "Error";
+    } finally {
+      sendBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
